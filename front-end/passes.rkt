@@ -30,7 +30,7 @@ Lenguajes y passes utilizados en el front-end del compilador
     l
     s
     t
-    (primapp pr e* ... e)
+    (primapp pr e* ...)
     (define x e)
     (while [e0] e1)
     (for [x e0] e1)
@@ -182,7 +182,60 @@ Lenguajes y passes utilizados en el front-end del compilador
 
 ;; Agrega nombres a las funciones lambda
 ;; Ejercicio de la práctica 4
-(define-pass un-anonymous : LF (ir) -> L8 ()
+(define-pass un-anonymous : L3 (ir) -> L4 ()
   (Expr : Expr (ir) -> Expr ()
         [(lambda ([,x* ,t*] ...) ,[body*] ... ,[body])
          `(letfun ([,(newid (vars ir)) Lambda (lambda ([,x* ,t*] ...) ,body* ... ,body)]) ,(newid (vars ir)))]))
+
+
+;; aux. regresa si la aridad del operador es compatible con el numero
+;; de argumentos (dada en numero).
+(define (prc-ar pr actual)
+  (match pr
+    ["+" #t]
+    ["-" (> actual 0)]
+    ["*" #t]
+    ["/" (> actual 0)]
+    ["length" (eq? 1 actual)]
+    ["car" (eq? 1 actual)]
+    ["cdr" (eq? 1 actual)]
+    and not or < > equal? iszero? ++ --
+    ["and" #t]
+    ["not" (eq? 1 actual)]
+    ["or" #t]
+    ["<" (> actual 0)]
+    [">" (> actual 0)]
+    ["equal?" (eq? actual 2)]
+    ["iszero?" (eq? actual 2)]
+    ["++" (eq? 1 actual)]
+    ["--" (eq? 1 actual)]))
+
+;; verifica si las primitivas estan siendo aplicadas a la cantidad de elementos adecuada
+;; Ejercicio de la práctica 4
+(define-pass verify-arity : L4 (ir) -> L4 ()
+  (Expr : Expr (ir) -> Expr ()
+        [(primapp ,pr ,[e*] ...)
+         (if (prc-ar (symbol->string pr) (length e*))
+             `(primapp ,pr ,e* ...)
+             (error (string-append "Wrong arity for " (symbol->string pr)
+                                   ", got <" (~v (length e*)) ">")))]))
+
+;; Verifica que la expresión no tenga variables libres, en caso de tenerlas manda un error,
+;; si no tiene variables libres devuelve la misma expresion.
+;; Ejercicio de la práctica 4
+;;
+;; verfigy-vars: L4 -> L4 || error
+(define-pass verify-vars : L4 (ir) -> L4 ()
+  (Expr : Expr (ir [env null]) -> Expr ()
+        [,x
+         (if (memq x env)
+             x
+             (error (string-append "Free variable: " (symbol->string x))))]
+        [(let ([,x ,t ,[e]]) ,[Expr : body* (cons x env) -> body*] ... ,[Expr : body (cons x env) -> body])
+         `(let ([,x ,t ,e]) ,body* ... ,body)]
+        [(letrec ([,x ,t ,[Expr : e (cons x env) -> e]]) ,[Expr : body* (cons x env) -> body*] ... ,[Expr : body (cons x env) -> body])
+         `(letrec ([,x ,t ,e]) ,body* ... ,body)]
+        [(lambda ([,x* ,t*] ...) ,[Expr : body* (append x* env) -> body*] ... ,[Expr : body (append x* env) -> body])
+         `(lambda ([,x* ,t*] ...) ,body* ... ,body)]))
+
+
