@@ -100,3 +100,44 @@ Lenguajes y passes utilizados en el front-end del compilador
 (define-pass remove-string : L1 (ir) -> L2 ()
   (Expr : Expr (ir) -> Expr ()
         [,s (string->list s)]))
+
+;; Definimos L3 (extiende de L2) que elimina los let y letrec de múltiples parámetros y
+;; los deja con un solo parámetro.
+(define-language L3
+  (extends L2)
+  (Expr (e body)
+        (- (let ([x* t* e*] ...) body* ... body)
+           (letrec ([x* t* e*] ...) body* ... body))
+        (+ (let ([x* t* e*]) body* ... body)
+           (letrec ([x* t* e*]) body* ... body))))
+
+
+;; Currifica las expresiones let y letrec del lenguaje L2 y las convierte en let y letrec del lenguaje L3
+;; Ejercicio de práctica 4
+;;
+;; curry-let: L2 -> L3
+(define-pass curry-let : L2 (ir) -> L3 ()
+  (Expr : Expr (ir) -> Expr ()
+         [(let ([,x* ,t* ,[e*]] ...) ,[body*] ... ,[body])
+          (let f ([x* x*] [t* t*] [e* e*] [body body] [body* body*])
+            (if (<= (length x*) 1)
+                `(let ([,(car x*) ,(car t*) ,(car e*)]) ,body* ... ,body)
+                `(let ([,(car x*) ,(car t*) ,(car e*)]) ,(f (cdr x*) (cdr t*) (cdr e*) body body*))))]
+         [(letrec ([,x* ,t* ,[e*]] ...) ,[body*] ... ,[body])
+          (let f ([x* x*] [t* t*] [e* e*] [body body] [body* body*])
+            (if (<= (length x*) 1)
+                `(letrec ([,(car x*) ,(car t*) ,(car e*)]) ,body* ... ,body)
+                `(letrec ([,(car x*) ,(car t*) ,(car e*)]) ,(f (cdr x*) (cdr t*) (cdr e*) body body*))))]))
+
+;; Cambia los let que tiene como asignaciones una lambda y las convierte en letrec 
+;; Ejercicio de práctica 4
+;;
+;; identify-assignments: L3 -> L3
+(define-pass identify-assignments : L3 (ir) -> L3 ()
+  (Expr : Expr (ir) -> Expr ()
+        [(let ([,x ,t ,[e]]) ,[body*] ... ,[body])
+         (if (equal? t 'Lambda)
+             `(letrec ([,x ,t ,e]) ,body* ... ,body)
+             `(let ([,x ,t ,e]) ,body* ... ,body))]))
+
+
