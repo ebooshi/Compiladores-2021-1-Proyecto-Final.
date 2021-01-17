@@ -30,19 +30,24 @@ Lenguajes y passes utilizados en el front-end del compilador
     l
     s
     t
-    (pr c* ... c)
+    (primapp pr e* ... e)
+    (define x e)
+    (while [e0] e1)
+    (for [x e0] e1)
     (begin e* ... e)
     (if e0 e1)
     (if e0 e1 e2)
     (lambda ([x* t*] ...) body* ... body)
     (let ([x* t* e*] ...) body* ... body)
     (letrec ([x* t* e*] ...) body* ... body)
+    (list e* ...)
     (e0 e1 ...)))
 
 ;; Predicados (para list y string se usan los de racket)
 (define (variable? x) (and (symbol? x) (not (primitive? x)) (not (constant? x))))
 
-(define (primitive? x) (memq x '(+ - * / length car cdr)))
+(define (primitive? x)
+  (memq x '(+ - * / car cdr length and not or < > equal? iszero? ++ --)))
 
 (define (constant? x)
   (or (integer? x)
@@ -70,13 +75,28 @@ Lenguajes y passes utilizados en el front-end del compilador
   (Expr (e body)
         (- (if e0 e1))))
  
-(define-parser parse-L1 L1)
+(define-parser parser-L1 L1)
 
 ;; Proceso 1: remove-one-armed-if
-;;
-;; Remove single branch if amd convert them into two branch if
+;; Fue un ejercicio de la práctica 3
 (define-pass remove-armed-if : LF (ir) -> L1 ()
   (Expr : Expr (ir) -> Expr ()
-    [,c `',c]
     [(if ,[e0] ,[e1])
      `(if ,e0 ,e1 (void))]))
+
+;; Lenguaje con strings como listas de caracteres
+(define-language L2
+  (extends L1)
+  (terminals
+   (- (string (s))))
+  (Expr (e body)
+        (- s)))
+
+(define-parser parser-L2 L2)
+
+;; Elimina strings de L1 y las convierte en listas de char
+;; Fue un ejercicio de la práctica 3
+;; TODO: Pendiente hasta que se confirme el manejo del constructor lista
+(define-pass remove-string : L1 (ir) -> L2 ()
+  (Expr : Expr (ir) -> Expr ()
+        [,s (string->list s)]))
