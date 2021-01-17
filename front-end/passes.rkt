@@ -155,9 +155,9 @@ Lenguajes y passes utilizados en el front-end del compilador
    [,l (append-map vars l)]
    [,pr null]
    [(primapp ,pr ,e* ...) (append-map vars e*)]
-   [(define x e) (cons x null)]
-   [(while [e0] e1) (append (vars e0) (vars e1))]
-   [(for [x e0] e1) (append (vars e0) (vars e1))]
+   [(define ,x ,e) (cons x null)]
+   [(while [,e0] ,e1) (append (vars e0) (vars e1))]
+   [(for [,x ,e0] ,e1) (append (list x) (vars e0) (vars e1))]
    [(begin ,e* ... ,e) (append (vars e) (append-map vars e*))]
    [(if ,e0 ,e1 ,e2) (append (vars e0) (vars e1) (vars e2))]
    [(lambda ([,x* ,t*] ...) ,body* ..., body)
@@ -199,7 +199,6 @@ Lenguajes y passes utilizados en el front-end del compilador
     ["length" (eq? 1 actual)]
     ["car" (eq? 1 actual)]
     ["cdr" (eq? 1 actual)]
-    and not or < > equal? iszero? ++ --
     ["and" #t]
     ["not" (eq? 1 actual)]
     ["or" #t]
@@ -224,7 +223,7 @@ Lenguajes y passes utilizados en el front-end del compilador
 ;; si no tiene variables libres devuelve la misma expresion.
 ;; Ejercicio de la práctica 4
 ;;
-;; verfigy-vars: L4 -> L4 || error
+;; verfify-vars: L4 -> L4 || error
 (define-pass verify-vars : L4 (ir) -> L4 ()
   (Expr : Expr (ir [env null]) -> Expr ()
         [,x
