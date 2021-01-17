@@ -140,4 +140,49 @@ Lenguajes y passes utilizados en el front-end del compilador
              `(letrec ([,x ,t ,e]) ,body* ... ,body)
              `(let ([,x ,t ,e]) ,body* ... ,body))]))
 
+;; Lenguaje en el cual se agregan los `letfun`
+(define-language L4
+  (extends L3)
+  (Expr (e body)
+        (+ (letfun ([x* t* body*] e*)))))
 
+;; aux. variables de expresiones
+(define (vars e)
+  (nanopass-case
+   (L3 Expr) e
+   [,x (cons x null)]
+   [,c null]
+   [,l (append-map vars l)]
+   [,pr null]
+   [(primapp ,pr ,e* ...) (append-map vars e*)]
+   [(define x e) (cons x null)]
+   [(while [e0] e1) (append (vars e0) (vars e1))]
+   [(for [x e0] e1) (append (vars e0) (vars e1))]
+   [(begin ,e* ... ,e) (append (vars e) (append-map vars e*))]
+   [(if ,e0 ,e1 ,e2) (append (vars e0) (vars e1) (vars e2))]
+   [(lambda ([,x* ,t*] ...) ,body* ..., body)
+    (append x* (append-map vars body*) (vars body))]
+   [(let ([,x ,t ,e]) ,body* ... ,body)
+    (append (list x) (append-map vars body*) (vars body))]
+   [(letrec ([,x ,t ,e]) ,body* ... ,body)
+    (append (list x) (append-map vars body*) (vars body))]
+   [(list ,e* ...) (append-map vars e*)]
+   [(,e0 ,e1 ...) (append (vars e) (append-map vars e1))]))
+
+;; aux. dada una lista de variables y un posible identificador, regresa ese identificador
+;; si no esta presente dentro de las variables dadas, u otro fresco en otro caso
+(define (newid2 vrs x)
+  (if (memq x vrs)
+      (newid2 vrs (string->symbol (string-append (symbol->string x) "0")))
+      x))
+
+;; aux. dada una lista de variables, regresa identificador fresco
+(define (newid vrs)
+  (newid2 vrs (string->symbol "f")))
+
+;; Agrega nombres a las funciones lambda
+;; Ejercicio de la práctica 4
+(define-pass un-anonymous : LF (ir) -> L8 ()
+  (Expr : Expr (ir) -> Expr ()
+        [(lambda ([,x* ,t*] ...) ,[body*] ... ,[body])
+         `(letfun ([,(newid (vars ir)) Lambda (lambda ([,x* ,t*] ...) ,body* ... ,body)]) ,(newid (vars ir)))]))
