@@ -6,7 +6,7 @@ Compiladores 2021-1
 Autores:
 313245312 - González Alvarado Raúl
 316255709 - Hernández Cano Alejandro
-xxxxxxxxx - Miguel
+315116663 - Muñoz Barón Luis Miguel 
 xxxxxxxxx - Miren
 
 Lenguajes y passes utilizados en el front-end del compilador
