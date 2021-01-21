@@ -5,7 +5,8 @@
 (define path "ejemplos/ejemplo1.mt")
 
 (define passes (list remove-armed-if remove-string curry-let
-                     identify-assignments un-anonymous verify-arity))
+                     identify-assignments un-anonymous verify-arity
+                     verify-arity))
 (define lf (parser-LF (leer-codigo-LF path)))
 
 (define (apply-procs procs expr)

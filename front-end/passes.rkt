@@ -140,11 +140,10 @@ Lenguajes y passes utilizados en el front-end del compilador
              `(let ([,x ,t ,e]) ,body* ... ,body))]))
 
 ;; Lenguaje en el cual se agregan los `letfun`
-;; TODO: (letfun ([x* t* body*] e*)) vs (letfun ([x* t* body*]) e*)
 (define-language L4
   (extends L3)
   (Expr (e body)
-        (+ (letfun ([x* t* body*] e*)))))
+        (+ (letfun ([x* t* body*]) e*))))
 
 ;; aux. variables de expresiones
 (define (vars e)
@@ -234,6 +233,8 @@ Lenguajes y passes utilizados en el front-end del compilador
          `(let ([,x ,t ,e]) ,body* ... ,body)]
         [(letrec ([,x ,t ,[Expr : e (cons x env) -> e]]) ,[Expr : body* (cons x env) -> body*] ... ,[Expr : body (cons x env) -> body])
          `(letrec ([,x ,t ,e]) ,body* ... ,body)]
+        [(letfun ([,x ,t ,[Expr : e (cons x env) -> e]]) ,[Expr : body* (cons x env) -> body*])
+         `(letfun ([,x ,t ,e]) ,body*)]
         [(lambda ([,x* ,t*] ...) ,[Expr : body* (append x* env) -> body*] ... ,[Expr : body (append x* env) -> body])
          `(lambda ([,x* ,t*] ...) ,body* ... ,body)]))
 
