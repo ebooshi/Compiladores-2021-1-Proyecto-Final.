@@ -140,6 +140,7 @@ Lenguajes y passes utilizados en el front-end del compilador
              `(let ([,x ,t ,e]) ,body* ... ,body))]))
 
 ;; Lenguaje en el cual se agregan los `letfun`
+;; TODO: (letfun ([x* t* body*] e*)) vs (letfun ([x* t* body*]) e*)
 (define-language L4
   (extends L3)
   (Expr (e body)
@@ -166,7 +167,7 @@ Lenguajes y passes utilizados en el front-end del compilador
    [(letrec ([,x ,t ,e]) ,body* ... ,body)
     (append (list x) (append-map vars body*) (vars body))]
    [(list ,e* ...) (append-map vars e*)]
-   [(,e0 ,e1 ...) (append (vars e) (append-map vars e1))]))
+   [(,e0 ,e1 ...) (append (vars e0) (append-map vars e1))]))
 
 ;; aux. dada una lista de variables y un posible identificador, regresa ese identificador
 ;; si no esta presente dentro de las variables dadas, u otro fresco en otro caso
