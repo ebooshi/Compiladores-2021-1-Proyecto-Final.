@@ -96,10 +96,9 @@ Lenguajes y passes utilizados en el front-end del compilador
 
 ;; Elimina strings de L1 y las convierte en listas de char
 ;; Fue un ejercicio de la práctica 3
-;; TODO: Pendiente hasta que se confirme el manejo del constructor lista
 (define-pass remove-string : L1 (ir) -> L2 ()
   (Expr : Expr (ir) -> Expr ()
-        [,s (string->list s)]))
+        [,s `(list ,(string->list s) ...)]))
 
 ;; Definimos L3 (extiende de L2) que elimina los let y letrec de múltiples parámetros y
 ;; los deja con un solo parámetro.
