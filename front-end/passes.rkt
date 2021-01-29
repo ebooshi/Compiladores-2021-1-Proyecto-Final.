@@ -1,5 +1,8 @@
 #lang nanopass
 
+
+(require racket/pretty)
+
 #|
 Compiladores 2021-1
 
@@ -239,10 +242,7 @@ Lenguajes y passes utilizados en el front-end del compilador
          `(lambda ([,x* ,t*] ...) ,body* ... ,body)]))
 
 
-;; Función que lee un archivo de extensión que contiene
-;; expresiones de LF (la extensión debe ser ".mt")
-;; directo de la ruta especificada.
-(define (leer-codigo-LF path)
-  (call-with-input-file path
-    (lambda (in) (read in))
-    #:mode 'text))
+
+
+
+
