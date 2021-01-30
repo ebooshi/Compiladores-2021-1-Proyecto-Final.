@@ -72,6 +72,9 @@ Lenguajes y passes utilizados en el front-end del compilador
 
 (define-parser parser-LF LF)
 
+; =================================================================== Front End ===================================================================================
+; ================================================================= (Passes 1 - 7) ================================================================================
+
 ;; Lenguaje sin ifs de una sola rama
 (define-language L1
   (extends LF)
@@ -242,6 +245,205 @@ Lenguajes y passes utilizados en el front-end del compilador
          `(lambda ([,x* ,t*] ...) ,body* ... ,body)]))
 
 
+
+; =================================================================== Middle End ===================================================================================
+; ================================================================= (Passes 8 - 11) ================================================================================
+
+; Lambdas de una sola asignacion.
+(define-language L5
+  (extends L4)
+  (Expr (e body)
+        (- (lambda ([x* t*] ...) body* ... body)
+           (e0 e1 ...))
+        (+ (lambda ([x t])  body* ... body)
+           (e0 e1))))
+
+(define-parser parse-L5 L5)
+
+; Transforma lambda expresiones y aplicaciones por su equivalente currificada.
+(define-pass curry : L4 (ir) -> L5 ()
+  (Expr : Expr (e) -> Expr ()
+        [(lambda ([,x* ,t*] ...) ,[body])
+         (let f ([bindingx* x*]
+                 [bindingt* t*])
+           (if (equal? (length bindingx*) 1)
+               `(lambda ([,(car bindingx*) ,(car bindingt*)]) ,body)
+               `(lambda ([,(car bindingx*) ,(car bindingt*)]) ,(f (cdr bindingx*) (cdr bindingt*)))))]
+        [(,[e0] ,[e1] ...)
+         (let f ([be0 e0]
+                 [be1 e1])
+           (if (equal? (length be1) 0)
+               `,be0
+               (f `(,be0 ,(car be1)) (cdr be1))))]))
+
+; Constantes quot
+(define-language L6
+  (extends L5)
+  (Expr (e body)
+        (- c)
+        (+ (quot c))))
+
+(define-parser parse-L6 L6)
+
+; Transforma las constantes en constantes quot
+(define-pass quote-const : L5 (ir) -> L6 ()
+  (Expr : Expr (ir) -> Expr ()
+        [,c `(quot ,c)]))
+
+; Lenguaje para constantes tipadas.
+(define-language L7
+  (extends L6)
+  (Expr (e body)
+        (- (quot c))
+        (+ (const t c))))
+
+(define-parser parse-L7 L7)
+
+; Tipado de cada constante.
+(define-pass type-const : L6 (ir) -> L7 ()
+  (Expr : Expr (e) -> Expr ()
+        [(quot ,c)
+         (cond
+           [(boolean? c) `(const Bool ,c)]
+           [(number? c) `(const Int ,c)]
+           [(char? c) `(const Char ,c)])]))
+
+; Auxiliar get var type from context
+(define (get x ctx)
+  (   if (empty? ctx)
+         (error "No existe la variable en el contexto locote")       ; La variable no fue encontrada en el contexto, lanzamos un error jejajsajas
+         (if (equal? x (caar ctx))  ; Si la variable es la misma que la que esta almacenada en la cabeza de la lista
+             (cdar ctx)            ; Regresamos el tipo que tiene su pareja.
+             (get x (cdr ctx)))))          ; Si no es, se llama la funcion recursivamente con el resto de la lista.
+
+; Unificacion de tipos
+(define (unify t1 t2)
+	(if (and (type? t1) (type? t2))
+		(cond
+                  [(equal? t1 t2) #t]
+                  [(and (equal? 'List t1) (list? t2)) (equal? (car t2) 'List)]
+                  [(and (equal? 'List t2) (list? t1)) (equal? (car t1) 'List)]
+                  [(and (list? t1) (list? t2)) (and (unify (car t1) (car t2)) (unify (caddr t1) (caddr t2)))]
+                  [else #f])
+		(error "Se esperaban 2 tipos")))
+
+;----------------------------------------------------- Algoritmo de inferencia J -------------------------------------
+(define (J expr ctx)
+  (nanopass-case (L7 Expr) expr
+                 ; Regla Var.
+                 [,x (get x ctx)]
+                 ; Regla Const.
+                 [(const ,t ,c) t]
+                 ; Regla Begin.
+                 [(begin ,e* ... ,e)
+                  (let f ([e* e*]
+                          [e e])
+                    (if (empty? e*)
+                        (J e ctx)
+                        (f (cdr e*) (e))))]
+                 ; Regla arit, car, cdr. 
+                 [(primapp ,pr ,e* ...)
+                  (cond
+                    [(or (equal? pr 'length) (equal? pr 'car) (equal? pr 'cdr))
+                     (let ([t (J (car e*) ctx)])
+                       (if (equal? (car t) 'List)
+                           (cond
+                             [(equal? pr 'car) (third t)]
+                             [(equal? pr 'cdr) t]
+                             [(equal? pr 'length) 'Int])
+                           (error "Los operandos no son de tipo List.")))]
+                    [(or (equal? pr '+) (equal? pr '-) (equal? pr '*) (equal? pr '/))
+                     (if (and (unify 'Int (J (first e*) ctx)) (equal? (J (car e*) ctx) (J (second e*) ctx)) )
+                         'Int
+                         (error "Los operadores no son de tipo Int."))])]
+
+                 ; Regla If.
+                 [(if ,e0 ,e1 ,e2)
+                  (let ([t0 (J e0 ctx)]
+                        [t1 (J e1 ctx)]
+                        [t2 (J e2 ctx)])
+                    (if (and (unify t0 'Bool) (unify t1 t2))
+                        t1
+                        (error "F: Las ramas del if no tienen el mismo tipo y/o la guarda no es booleana.")))]
+
+                 ;Regla While.
+                   [(while [,e0] ,e1) (if (equal? (J e0 ctx) 'Bool) 
+			     		  (J e1 ctx) 
+			     		  (error "El tipo no corresponde con el valor."))]
+                 
+                 ;Regla Lambda.
+                 [(lambda ([,x ,t]) ,body)
+                  (let* ([ctxN (set-add ctx (cons x t))]
+                         [type (J body ctxN)])
+                    `(,t → ,type))]
+                 ; Regla let.
+                 [(let ([,x ,t ,e]) ,body)
+                  (let* ([ctxN (set-add ctx (cons x t))]
+                         [t0 (J e ctx)]
+                         [t1 (J body ctxN)])
+                    (if (unify t t0)
+                        t1
+                        (error "Argumentos no compatibles.")))]
+                 ; Regla letrec.
+                 [(letrec ([,x ,t ,e]) ,body)
+                  (let* ([ctxN (set-add ctx (cons x t))]
+                        [t0 (J e ctxN)]
+                        [t1 (J body ctxN)])
+                    (if (unify t t0)
+                        t1
+                        (error "Tipos no unificables.")))]
+                 ; Regla letfun. que onda con los tipos ->?
+                 [(letfun ([,x ,t ,e]) ,body)
+                 (let* ([ctxN (set-add ctx (cons x t))]
+                       [t0 (J e ctx)]
+                       [t1 (J body ctxN)])
+                   (if (and (list? t0) (equal? (second t0) '→) (unify t t0))
+                       t1
+                       (error "Tipos no unificables.")) )]
+                 ; Regla empty.
+                 ; Regla List.
+                 ; Regla List (Esta la puse yo y la verdad no se si va)
+                 [(list ,e* ...)
+                  (if (empty? e*)
+                      'List
+                      (let* ([t (map (lambda (x) (J x ctx)) e*)]
+                             [b (foldr (lambda (x y) (equal? x y)) (car t) t)])
+                        (list 'List 'of (car t))))]
+                 ; Regla App.
+                 [(,e0 ,e1)
+                  (let* ([t0 (J e0 ctx)]
+                         [t1 (J e1 ctx)])
+                    (if (list? t0)
+                        (if (unify (car t0) t1)
+                            (third t0)
+                            (error "F: El dominio y la entrada de la función son distintas. :'v"))
+                        (error "F: El primer parámetro no es una función. :c")))]))
+
+; inferencia de tipos
+(define-pass type-infer : L7 (ir) -> L7 ()
+  (Expr : Expr (e) -> Expr ()
+        [(let ([,x ,t ,e]) ,body)
+         (if (equal? t 'List)
+             `(let ([,x ,(J e '()) ,e]) ,body) ir)]
+        [(letrec ([,x ,t ,e]) ,body)
+         (if (or (equal? t 'Lambda) (equal? t 'List))
+             `(letrec ([,x ,(J e '()) ,e]) ,body) ir)]
+        [(letfun ([,x ,t ,e]) ,body)
+         (if (equal? t 'Lambda)
+             `(letfun ([,x ,(J e '()) ,e]) ,body) ir)]))
+
+; Lenguaje para descurrificar Lambda expresiones.
+(define-language L8
+  (extends L7)
+  (Expr (e body)
+    (- (lambda ([x t]) body* ... body))
+    (+ (lambda ([x* t*] ...) body* ... body))))
+
+
+
+
+; =================================================================== Back End =====================================================================================
+; ================================================================ (Passes 12 - 13) ================================================================================
 
 
 

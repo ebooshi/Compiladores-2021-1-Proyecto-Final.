@@ -9,15 +9,50 @@
 ;Ruta del archivo de ejemplo
 (define path "ejemplos/ejemplo1.mt")
 
+
+; ----------------------------- Escritura de archivos ----------------------
+
+;; Función que lee un archivo de extensión que contiene
+;; expresiones de LF (la extensión debe ser ".mt")
+;; directo de la ruta especificada.
+(define (read-file path)
+  (call-with-input-file path
+    (lambda (in) (read in))
+    #:mode 'text))
+
+;Funcion que escribe en un archivo lo que contiene la codigo indicado en el path. 
+(define (write-file codigo path)
+  (with-output-to-file path
+    (lambda () (printf "~a" codigo))
+    #:mode 'text #:exists 'replace))
+
+;Funcion que crea el archivo correspondiente a alguna de las fases de compilacion
+;crea el archivo en la ruta path cuyo contenido sera la variable codigo.
+(define (write-file-int unparser codigo path)
+  (write-file (pretty-format (unparser codigo)) path))
+
+; Lee el archivo indicado en el path y aplica los procesos definidos en la lista passes.
+(define (compilar path)
+  (define codigo-LF (read-file path))
+  (define codigo-post-front-end (apply-procs passes-front-end codigo-LF))
+  (write-file-int unparse-L4 codigo-post-front-end (string-append path ".fe")))
+
 ; --------------------------- Pre-procesamiento ----------------------------
 
-;Lista con los pases correspondientes a Middle-end.
-(define passes (list remove-armed-if remove-string curry-let
+;Lista con los pases correspondientes a front-end.
+(define passes-front-end (list remove-armed-if remove-string curry-let
                      identify-assignments un-anonymous verify-arity
                      verify-arity))
 
+;Lista con los pases correspondientes a Middle-end.
+(define passes-middle-end (list curry type-const type-infer
+                     uncurry))
+
+;Lista con los pases correspondientes a back-end.
+(define passes-back-end (list list-to-array c))
+
 ;lf contiene el programa parseado contenido en el archivo de la ruta.
-(define lf (parser-LF (leer-codigo-LF path)))
+(define lf (parser-LF (read-file path)))
 
 ;Funcion para aplicar los pases de la lista proc al programa expr.
 (define (apply-procs procs expr)
@@ -25,24 +60,6 @@
     expr
     (apply-procs (rest procs) ((first procs) expr))))
 
-; ----------------------------- Escritura de archivos ----------------------
-
-;Funcion que escribe en un archivo lo que contiene la codigo indicado en el path. 
-(define (escribir-codigo codigo path)
-  (with-output-to-file path
-    (lambda () (printf "~a" codigo))
-    #:mode 'text #:exists 'replace))
-
-;Funcion que crea el archivo correspondiente a alguna de las fases de compilacion
-;crea el archivo en la ruta path cuyo contenido sera la variable codigo.
-(define (escribir-codigo-int unparser codigo path)
-  (escribir-codigo (pretty-format (unparser codigo)) path))
-
-; Lee el archivo indicado en el path 
-(define (compilar path)
-  (define codigo-LF (leer-codigo-LF path))
-  (define codigo-post-front-end (apply-procs passes codigo-LF))
-  (escribir-codigo-int unparse-L8 codigo-post-front-end (string-append path ".fe")))
 
 ; ----------------------------- Presentacion -------------------------------
 (println "Original:")
@@ -50,6 +67,6 @@
 ;(println "vars:")
 ;(println (vars (apply-procs passes lf)))
 (println "Con passes:")
-(println (apply-procs passes lf))
+(println (apply-procs passes-front-end lf))
 
 
