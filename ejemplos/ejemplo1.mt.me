@@ -1,0 +1,15 @@
+'(let ((x Int (const Int 10)))
+   (letrec ((y
+             Lambda
+             (letfun ((f Lambda (lambda ((z Int)) ((+ z) (const Int 1))))) f)))
+     (if (const Bool #t)
+       (((((if (const Bool #f))
+           (list
+            (const Char #\h)
+            (const Char #\o)
+            (const Char #\l)
+            (const Char #\a)))
+          lambda)
+         (w Int))
+        ((+ w) (const Int 10)))
+       void)))

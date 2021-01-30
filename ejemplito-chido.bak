@@ -35,9 +35,7 @@
 (define (compilar path)
   (define codigo-LF (read-file path))
   (define codigo-post-front-end (apply-procs passes-front-end codigo-LF))
-  (write-file-int unparse-L4 codigo-post-front-end (string-append path ".fe"))
-  (define codigo-post-middle-end (apply-procs passes-middle-end (apply-procs passes-front-end lf)))
-  (write-file-int unparse-L8 codigo-post-middle-end (string-append path ".me")))
+  (write-file-int unparse-L4 codigo-post-front-end (string-append path ".fe")))
 
 ; --------------------------- Pre-procesamiento ----------------------------
 
@@ -47,11 +45,11 @@
                      verify-arity))
 
 ;Lista con los pases correspondientes a Middle-end.
-(define passes-middle-end (list curry quote-const type-const type-infer
+(define passes-middle-end (list curry type-const type-infer
                      uncurry))
 
 ;Lista con los pases correspondientes a back-end.
-;(define passes-back-end (list list-to-array c))
+(define passes-back-end (list list-to-array c))
 
 ;lf contiene el programa parseado contenido en el archivo de la ruta.
 (define lf (parser-LF (read-file path)))
@@ -69,6 +67,6 @@
 ;(println "vars:")
 ;(println (vars (apply-procs passes lf)))
 (println "Con passes:")
-(println (apply-procs passes-middle-end (apply-procs passes-front-end lf)))
+(println (apply-procs passes-front-end lf))
 
 

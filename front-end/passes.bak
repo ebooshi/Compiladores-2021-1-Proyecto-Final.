@@ -439,19 +439,7 @@ Lenguajes y passes utilizados en el front-end del compilador
     (- (lambda ([x t]) body* ... body))
     (+ (lambda ([x* t*] ...) body* ... body))))
 
-(define-parser parse-L8 L8)
 
-(define-pass uncurry : L7 (ir) -> L8 ()
-  (definitions
-    (define (des-curry espl lst)
-      (nanopass-case (L7 Expr) espl
-      [(lambda ([,x ,t]) ,body) (des-curry body (append lst (list (cons x t))))]
-      [else (values espl lst)])))
-  (Expr : Expr (ir) -> Expr ()
-        [(lambda ([,x ,t]) ,[body]) (let-values ([(e elem) (des-curry ir '())])
-                                      (let ([x* (map car elem)]
-                                            [e* (map cdr elem)])
-                                        `(lambda ([,x* ,e*] ...) ,(parse-L8 (unparse-L7 e)))))]))
 
 
 ; =================================================================== Back End =====================================================================================
