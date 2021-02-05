@@ -457,6 +457,33 @@ Lenguajes y passes utilizados en el front-end del compilador
 ; =================================================================== Back End =====================================================================================
 ; ================================================================ (Passes 12 - 13) ================================================================================
 
+(define-language L9
+  (extends L8)
+  (terminals
+   (- (list (l)))
+   (+ (array (arr)))
+   (+ (length (len))))
+  (Expr (e body)
+    (- l)
+    (- (list e* ...))
+    (+ (array len t [e* ...]))))
 
+(define-parser parse-L9 L9)
 
+(define (length? x) (and (integer? x) (>= x 0)))
+; TODO xdxxdxdxddxddx
+(define (array? x) #t)
 
+(define (typeof e)
+  (nanopass-case (L9 Expr) e
+                 [(const ,t ,c) t]))
+
+(define-pass list-to-array : L8 (ir) -> L9 ()
+  (Expr : Expr (e) -> Expr ()
+        [(list ,[e*] ...)
+         (if (empty? e*)
+             `(array ,0 Int [,null])
+             (let* ([e0 (first e*)]
+                    [t (typeof e0)]
+                    [n (length e*)])
+               `(array ,n ,t [,e* ...])))]))

@@ -1,13 +1,12 @@
 #lang nanopass
 
-
 (require racket/pretty)
 
 ;Archivo con Passes 1 - 13 (Front-end, Middle-end, Back-end)
-(require "front-end/passes.rkt")
+(require "Passes/Passes.rkt")
 
 ;Ruta del archivo de ejemplo
-(define path "ejemplos/ejemplo1.mt")
+(define path "ejemplos/ejemplo2.mt")
 
 
 ; ----------------------------- Escritura de archivos ----------------------
@@ -52,6 +51,7 @@
 
 ;Lista con los pases correspondientes a back-end.
 ;(define passes-back-end (list list-to-array c))
+(define passes-back-end (list list-to-array))
 
 ;lf contiene el programa parseado contenido en el archivo de la ruta.
 (define lf (parser-LF (read-file path)))
@@ -70,5 +70,4 @@
 ;(println (vars (apply-procs passes lf)))
 (println "Con passes:")
 (println (apply-procs passes-middle-end (apply-procs passes-front-end lf)))
-
-
+(println (apply-procs passes-back-end (apply-procs passes-middle-end (apply-procs passes-front-end lf))))
