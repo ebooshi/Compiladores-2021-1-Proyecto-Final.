@@ -472,7 +472,14 @@ Lenguajes y passes utilizados en el front-end del compilador
 
 (define (length? x) (and (integer? x) (>= x 0)))
 ; TODO xdxxdxdxddxddx
-(define (array? x) #t)
+(define (array? x)
+  (if (and (list? x) (eq? (length x) 4))
+      (let* ([a (car x)] ; array
+             [l (cadr x)] ; 2
+             [t (caddr x)] ; Int
+             [e* (cadddr x)]) ; (1 2)
+        (and (eq? a 'array) (length? l) (type? t) (list? e*) (eq? (length e*) l) (andmap constant? e*)))
+      #f))
 
 (define (typeof e)
   (nanopass-case (L9 Expr) e
