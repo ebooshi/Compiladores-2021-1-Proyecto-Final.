@@ -1,1 +1,1 @@
-(primapp ++ (list 1) (list 2))
+(primapp ++ 1)

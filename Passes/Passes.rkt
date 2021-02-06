@@ -211,8 +211,8 @@ Lenguajes y passes utilizados en el front-end del compilador
     [">" (> actual 0)]
     ["equal?" (eq? actual 2)]
     ["iszero?" (eq? actual 2)]
-    ["++" (eq? 2 actual)]
-    ["--" (eq? 2 actual)]))
+    ["++" (eq? 1 actual)]
+    ["--" (eq? 1 actual)]))
 
 ;; verifica si las primitivas estan siendo aplicadas a la cantidad de elementos adecuada
 ;; Ejercicio de la práctica 4
@@ -373,9 +373,9 @@ Lenguajes y passes utilizados en el front-end del compilador
                          'Bool
                          (error "Operador iszero? incorrecto :("))]
                     [(or (equal? pr '++) (equal? pr '--))
-                     (let* ([t0 (J (first e*) ctx)]
-                            [t1 (J (second e*) ctx)])
-                       (if (unify t0 t1) t0 (error "++ o -- mal formado :(")))])]
+                     (if (unify 'Int (J (first e*) ctx))
+                         'Int
+                         (error "++ / --  mal formado :("))])]
 
                  ; Regla If.
                  [(if ,e0 ,e1 ,e2)
