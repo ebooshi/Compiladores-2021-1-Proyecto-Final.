@@ -6,7 +6,7 @@
 (require "Passes/Passes.rkt")
 
 ;Ruta del archivo de ejemplo
-(define path "ejemplos/ejemplo2.mt")
+(define path "ejemplos/ejemplo3.mt")
 
 
 ; ----------------------------- Escritura de archivos ----------------------
@@ -69,5 +69,4 @@
 ;(println "vars:")
 ;(println (vars (apply-procs passes lf)))
 (println "Con passes:")
-(println (apply-procs passes-middle-end (apply-procs passes-front-end lf)))
 (println (apply-procs passes-back-end (apply-procs passes-middle-end (apply-procs passes-front-end lf))))

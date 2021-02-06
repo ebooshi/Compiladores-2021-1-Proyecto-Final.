@@ -355,7 +355,11 @@ Lenguajes y passes utilizados en el front-end del compilador
                     [(or (equal? pr '+) (equal? pr '-) (equal? pr '*) (equal? pr '/))
                      (if (and (unify 'Int (J (first e*) ctx)) (equal? (J (car e*) ctx) (J (second e*) ctx)) )
                          'Int
-                         (error "Los operadores no son de tipo Int."))])]
+                         (error "Los operadores no son de tipo Int."))]
+                    [(or (equal? pr 'or) (equal? pr 'and))
+                     (if (and (unify 'Bool (J (first e*) ctx)) (equal? (J (car e*) ctx) (J (second e*) ctx)))
+                         'Bool
+                         (error "Los operadores no son Bool."))])]
 
                  ; Regla If.
                  [(if ,e0 ,e1 ,e2)
@@ -365,6 +369,15 @@ Lenguajes y passes utilizados en el front-end del compilador
                     (if (and (unify t0 'Bool) (unify t1 t2))
                         t1
                         (error "F: Las ramas del if no tienen el mismo tipo y/o la guarda no es booleana.")))]
+
+                 ; Regla For
+                 [(for [,x ,e0] ,e1)
+                  (let ([t0s (J e0 ctx)])
+                    (if (and (list? t0s) (eq? (car t0s) 'List)) ; se asegura que sea una lista
+                        (let* ([t0 (caddr t0s)]
+                               [ctxN (set-add ctx (cons x t0))])
+                          (J e1 ctxN))
+                        (error "El argumento del for debe ser lista no vacia")))]
 
                  ;Regla While.
                    [(while [,e0] ,e1) (if (equal? (J e0 ctx) 'Bool) 
@@ -400,6 +413,9 @@ Lenguajes y passes utilizados en el front-end del compilador
                    (if (and (list? t0) (equal? (second t0) '→) (unify t t0))
                        t1
                        (error "Tipos no unificables.")) )]
+                 ; Regla define.
+                 [(define ,x ,e)
+                  (J e ctx)]
                  ; Regla empty.
                  ; Regla List.
                  ; Regla List (Esta la puse yo y la verdad no se si va)
@@ -430,7 +446,8 @@ Lenguajes y passes utilizados en el front-end del compilador
              `(letrec ([,x ,(J e '()) ,e]) ,body) ir)]
         [(letfun ([,x ,t ,e]) ,body)
          (if (equal? t 'Lambda)
-             `(letfun ([,x ,(J e '()) ,e]) ,body) ir)]))
+             `(letfun ([,x ,(J e '()) ,e]) ,body) ir)]
+        [else (if (symbol? (J e null)) e (error "mal tipado :("))]))
 
 ; Lenguaje para descurrificar Lambda expresiones.
 (define-language L8
@@ -471,7 +488,6 @@ Lenguajes y passes utilizados en el front-end del compilador
 (define-parser parse-L9 L9)
 
 (define (length? x) (and (integer? x) (>= x 0)))
-; TODO xdxxdxdxddxddx
 (define (array? x)
   (if (and (list? x) (eq? (length x) 4))
       (let* ([a (car x)] ; array
