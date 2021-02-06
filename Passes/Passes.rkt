@@ -532,3 +532,46 @@ Lenguajes y passes utilizados en el front-end del compilador
                     [t (typeof e0)]
                     [n (length e*)])
                `(array ,n ,t [,e* ...])))]))
+
+; auxiliar
+; une todos los elementos en una sola cadena
+; separando a todos por el separador
+(define (join elems sep)
+  (if (empty? elems)
+      ""
+      (string-append (car elems) sep (cdr elems))))
+
+#|
+ | TODO:
+ | x
+ | (define x e)
+ | (while [e0] e1)
+ | (for [x e0] e1)
+ | (begin e* ... e)
+ | (if e0 e1 e2)
+ | (e0 e1 ...)
+ | (let ([x* t* e*]) body* ... body)
+ | (letrec ([x* t* e*]) body* ... body)
+ | (letfun ([x* t* body*]) e*)
+ | (const t c)
+ | (lambda ([x* t*] ...) body* ... body)
+ | (array len t [e* ...])
+ |#
+(define (c expr)
+  (nanopass-case
+    (L9 Expr) expr
+
+    ; Caso operadores primitivos
+    [(primapp ,pr ,e* ...)
+     (case
+       [(eq? pr 'not) (string-append "(!" (c (car e*)) ")")]
+       [(eq? pr 'equal?) (join (map c e*) ("=="))]
+       [(eq? pr 'iszero?) (string-append "(" (c (car e*)) "==0)")]
+       [(memq pr '(++ --))
+        (string-append "(" (c (car e*)) (symbol->string pr) ")")]
+       [(memq pr '(< >))
+        (string-append "(" (c (car e*)) (symbol->string pr) (c (cadr e*)) ")")]
+       ; TODO length car cdr
+       [else (join (map c e*) (symbol->string pr))])]
+
+    [else (error expr)]))
