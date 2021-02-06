@@ -211,8 +211,8 @@ Lenguajes y passes utilizados en el front-end del compilador
     [">" (> actual 0)]
     ["equal?" (eq? actual 2)]
     ["iszero?" (eq? actual 2)]
-    ["++" (eq? 1 actual)]
-    ["--" (eq? 1 actual)]))
+    ["++" (eq? 2 actual)]
+    ["--" (eq? 2 actual)]))
 
 ;; verifica si las primitivas estan siendo aplicadas a la cantidad de elementos adecuada
 ;; Ejercicio de la práctica 4
@@ -359,7 +359,23 @@ Lenguajes y passes utilizados en el front-end del compilador
                     [(or (equal? pr 'or) (equal? pr 'and))
                      (if (and (unify 'Bool (J (first e*) ctx)) (equal? (J (car e*) ctx) (J (second e*) ctx)))
                          'Bool
-                         (error "Los operadores no son Bool."))])]
+                         (error "Los operadores no son Bool."))]
+                    [(and (equal? pr 'not))
+                     (if (and (equal? (length e*) 1) (unify 'Bool (J (first e* ctx))))
+                         'Bool
+                         (error "El operador no recibio un solo argumento y/o no es Bool"))]
+                    [(or (equal? pr '<) (equal? pr '>) (equal? pr 'equal?))
+                     (if (and (unify 'Int (J (first e*) ctx)) (equal? (J (car e*) ctx) (J (second e*) ctx)))
+                         'Bool
+                         (error "Operador < > equal? incorrecto :("))]
+                    [(or (equal? pr 'iszero?))
+                     (if (and (equal? (length e*) 1) (unify 'Int (J (first e* ctx))))
+                         'Bool
+                         (error "Operador iszero? incorrecto :("))]
+                    [(or (equal? pr '++) (equal? pr '--))
+                     (let* ([t0 (J (first e*) ctx)]
+                            [t1 (J (second e*) ctx)])
+                       (if (unify t0 t1) t0 (error "++ o -- mal formado :(")))])]
 
                  ; Regla If.
                  [(if ,e0 ,e1 ,e2)
@@ -423,8 +439,11 @@ Lenguajes y passes utilizados en el front-end del compilador
                   (if (empty? e*)
                       'List
                       (let* ([t (map (lambda (x) (J x ctx)) e*)]
-                             [b (foldr (lambda (x y) (equal? x y)) (car t) t)])
-                        (list 'List 'of (car t))))]
+                             [t0 (car t)]
+                             [b (andmap (lambda (x) (equal? x t0)) t)])
+                        (if b
+                            (list 'List 'of t0)
+                            (error "mala lista :("))))]
                  ; Regla App.
                  [(,e0 ,e1)
                   (let* ([t0 (J e0 ctx)]
@@ -433,7 +452,10 @@ Lenguajes y passes utilizados en el front-end del compilador
                         (if (unify (car t0) t1)
                             (third t0)
                             (error "F: El dominio y la entrada de la función son distintas. :'v"))
-                        (error "F: El primer parámetro no es una función. :c")))]))
+                        (error "F: El primer parámetro no es una función. :c")))]
+
+                 ; Desconocido
+                 [else (error "J Desconocido D:")]))
 
 ; inferencia de tipos
 (define-pass type-infer : L7 (ir) -> L7 ()
@@ -447,7 +469,7 @@ Lenguajes y passes utilizados en el front-end del compilador
         [(letfun ([,x ,t ,e]) ,body)
          (if (equal? t 'Lambda)
              `(letfun ([,x ,(J e '()) ,e]) ,body) ir)]
-        [else (if (symbol? (J e null)) e (error "mal tipado :("))]))
+        [else (if (J e null) e (error "mal tipado :("))]))
 
 ; Lenguaje para descurrificar Lambda expresiones.
 (define-language L8
