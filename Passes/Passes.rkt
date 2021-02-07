@@ -541,25 +541,68 @@ Lenguajes y passes utilizados en el front-end del compilador
       ""
       (string-append (car elems) sep (cdr elems))))
 
+;; auxiliar
+;; extrae los elementos de un array
+(define (extract-array e)
+  (nanopass-case (L9 Expr) e
+                 [(array ,len ,t (,e* ...)) (list len t e*)]))
+
 #|
  | TODO:
- | x
- | (define x e)
- | (while [e0] e1)
- | (for [x e0] e1)
- | (begin e* ... e)
- | (if e0 e1 e2)
- | (e0 e1 ...)
- | (let ([x* t* e*]) body* ... body)
+ + x
+ + (define x e)
+ + (while [e0] e1)
+ + (for [x e0] e1)
+ + (begin e* ... e)
+ + (if e0 e1 e2)
+ + (e0 e1)
+ + (let ([x* t* e*]) body* ... body)
  | (letrec ([x* t* e*]) body* ... body)
  | (letfun ([x* t* body*]) e*)
- | (const t c)
+ + (const t c)
  | (lambda ([x* t*] ...) body* ... body)
  | (array len t [e* ...])
  |#
 (define (c expr)
   (nanopass-case
     (L9 Expr) expr
+
+    
+    [,t (match t
+          ['Int "int"]
+          ['Bool "bool"]
+          ['Char "char"])]
+    [,x (symbol->string x)]
+    [(const ,t ,c)
+     (match t
+       ['Int (number->string c)]
+       ['Bool (if c "true" "false")]
+       ['Char (string c)])]
+    
+    [(define ,x ,e) (string-append "#define" (c x) (c e))]
+
+    [(while [,e0] ,e1) "while (" (c e0) ")" "{" (c e1) "}"]
+
+    [(for [,x ,e0] ,e1)
+     (let* ([data (extract-array e0)]
+            [len (car data)]
+            [t (cadr data)]
+            [e* (third data)])
+       (string-append "for(" (c t) " " (c x) "=0;i<" (number->string len) ";i++){" (c e1) "}"))]
+    
+    [(if ,e0 ,e1 ,e2) (string-append "if (" (c e0) "){" (c e1) "}else{" (c e2)  "}")]
+
+    [(let ((,x ,t ,e)) ,body* ... ,body)
+     (string-append (c t) (c x) "=" (c e))]
+
+    [(letfun ((,x ,t ,body)) ,e)
+     (string-append (c t) (c x) "(" (c body) "){" (c e) "}")]
+    
+    [(,e0 ,e1)
+     (string-append (c e0) "(" (c e1) ")")]
+    
+    [(begin ,e* ... ,e)
+     (string-append "{"  (foldr string-append "" (map c e*))  (c e) "}")]
 
     ; Caso operadores primitivos
     [(primapp ,pr ,e* ...)
