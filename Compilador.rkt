@@ -43,7 +43,7 @@
 ;Lista con los pases correspondientes a front-end.
 (define passes-front-end (list remove-armed-if remove-string curry-let
                      identify-assignments un-anonymous verify-arity
-                     verify-arity))
+                     verify-vars))
 
 ;Lista con los pases correspondientes a Middle-end.
 (define passes-middle-end (list curry quote-const type-const type-infer
