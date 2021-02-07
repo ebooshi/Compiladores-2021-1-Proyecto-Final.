@@ -10,7 +10,7 @@ Autores:
 313245312 - González Alvarado Raúl
 316255709 - Hernández Cano Alejandro
 315116663 - Muñoz Barón Luis Miguel 
-xxxxxxxxx - Miren
+315309452 - Hernández Leyva Mirén Jessamyn
 
 Lenguajes y passes utilizados en el front-end del compilador
 |#
